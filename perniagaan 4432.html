@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Laporan Penuh Perniagaan</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
+  <style>
+    /* Untuk menyembunyikan bahagian Setting secara lalai */
+    #settingSection {
+      display: none;
+    }
+    video {
+      background: #ccc;
+    }
+
+    /* Media print: sembunyikan butang & bahagian lain, tunjuk resit sahaja */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printableResit, #printableResit * {
+        visibility: visible;
+      }
+      #printableResit {
+        position: absolute;
+        left: 0;
+        top: 0;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-100">
+
+<!-- Butang Navigasi -->
+<div class="container mx-auto py-4 flex justify-end space-x-4">
+  <button
+    onclick="toggleSetting()"
+    class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+  >
+    Setting
+  </button>
+  <button
+    onclick="showMain()"
+    class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+  >
+    Home
+  </button>
+</div>
+
+<!-- BAHAGIAN SETTING -->
+<div id="settingSection" class="container mx-auto py-6">
+  <div class="bg-white p-6 rounded-lg shadow-lg mb-6">
+    <h2 class="text-xl font-bold mb-4">Tetapan Kedai</h2>
+    <label class="block mb-2">Muat naik gambar Kod QR kedai:</label>
+    <input
+      id="kedaiQrFile"
+      type="file"
+      accept="image/*"
+      class="p-2 border rounded-lg w-full mb-4"
+    />
+    <button
+      onclick="uploadQrImage()"
+      class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+    >
+      Upload QR
+    </button>
+    <img
+      id="kedaiQrPreview"
+      class="mt-2 w-48 h-48 hidden"
+      alt="Preview QR kedai"
+    />
+    <p class="text-sm text-gray-600 mt-2">
+      <em>*Imej ini akan digunakan semasa pelanggan memilih pembayaran QR.</em>
+    </p>
+  </div>
+
+  <!-- Pengurusan Stok -->
+  <div class="bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4">Pengurusan Stok</h2>
+    <!-- Tambah stok secara manual -->
+    <div class="grid grid-cols-3 gap-4 mt-4">
+      <input
+        id="stokKode"
+        class="p-2 border rounded-lg"
+        type="text"
+        placeholder="Kod Bar"
+      />
+      <input
+        id="stokNama"
+        class="p-2 border rounded-lg"
+        type="text"
+        placeholder="Nama Barang"
+      />
+      <input
+        id="stokHarga"
+        class="p-2 border rounded-lg"
+        type="number"
+        step="0.01"
+        placeholder="Harga (RM)"
+      />
+    </div>
+    <div class="grid grid-cols-3 gap-4 mt-4">
+      <input
+        id="stokKuantiti"
+        class="p-2 border rounded-lg"
+        type="number"
+        placeholder="Kuantiti"
+      />
+      <button
+        onclick="tambahStokManual()"
+        class="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+      >
+        Tambah Stok
+      </button>
+      <button
+        onclick="mulaImbasStok()"
+        class="bg-yellow-500 text-white px-4 py-2 rounded-lg hover:bg-yellow-600"
+      >
+        Imbas Kod Bar (Tambah Stok)
+      </button>
+    </div>
+
+    <!-- Video untuk imbas stok -->
+    <video
+      id="stokVideo"
+      autoplay
+      playsinline
+      class="w-full h-48 mt-4 hidden"
+    ></video>
+
+    <!-- Senarai Stok -->
+    <h3 class="text-lg font-semibold mt-6 mb-2">Senarai Stok:</h3>
+    <ul id="senaraiStok" class="list-disc pl-6"></ul>
+  </div>
+</div>
+
+<!-- PAPARAN UTAMA: PEMBELIAN & BAYARAN -->
+<div id="mainSection" class="container mx-auto py-6">
+  <!-- Pembelian / Jualan -->
+  <div class="bg-white p-6 rounded-lg shadow-lg">
+    <h2 class="text-xl font-bold mb-4">Pembelian / Jualan</h2>
+
+    <!-- Video untuk imbas pembelian -->
+    <video
+      id="beliVideo"
+      autoplay
+      playsinline
+      class="w-full h-48 mb-4 hidden"
+    ></video>
+
+    <div class="flex space-x-4 mb-4">
+      <button
+        onclick="mulaImbasBeli()"
+        class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600"
+      >
+        Imbas Kod Bar (Beli)
+      </button>
+      <button
+        onclick="tukarKameraBeli()"
+        class="bg-purple-500 text-white px-6 py-2 rounded-lg hover:bg-purple-600"
+      >
+        Tukar Kamera
+      </button>
+    </div>
+
+    <!-- Troli belian (senarai item dibeli) -->
+    <h3 class="text-lg font-semibold mb-2">Troli Pembelian:</h3>
+    <ul id="senaraiTroli" class="list-disc pl-6 mb-4"></ul>
+
+    <!-- Jumlah & Kaedah Bayaran -->
+    <div class="mb-4">
+      <strong>Jumlah Pembayaran (RM): </strong>
+      <span id="jumlahBayar">0.00</span>
+    </div>
+    <div class="mb-4">
+      <label for="kaedahBayar" class="mr-2">Kaedah Bayaran:</label>
+      <select id="kaedahBayar" class="p-2 border rounded-lg">
+        <option value="cash">Cash</option>
+        <option value="qr">QR Code</option>
+      </select>
+    </div>
+    <button
+      onclick="bayarSekarang()"
+      class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600"
+    >
+      Bayar
+    </button>
+  </div>
+
+  <!-- Paparan Kod QR Bisnes (untuk pembayaran) -->
+  <div id="qrPaymentContainer" class="hidden bg-white p-6 rounded-lg shadow-lg mt-4">
+    <h2 class="text-xl font-bold mb-4">Bayar Dengan QR Code</h2>
+    <p>Sila imbas Kod QR di bawah untuk membuat pembayaran:</p>
+    <img
+      id="kedaiQrImg"
+      src="placeholder.png"
+      alt="Kod QR Perniagaan"
+      class="w-48 h-48 my-4"
+    />
+    <button
+      onclick="confirmQRPayment()"
+      class="bg-green-500 text-white px-6 py-2 rounded-lg hover:bg-green-600"
+    >
+      Saya telah bayar
+    </button>
+  </div>
+
+  <!-- Resit Pembelian -->
+  <div class="bg-white p-6 rounded-lg shadow-lg hidden mt-4" id="resitContainer">
+    <div id="printableResit">
+      <h2 class="text-xl font-bold mb-4">Resit Pembelian</h2>
+      <div id="resitPembelian" class="mb-4"></div>
+    </div>
+    <!-- Butang Print & Tutup Resit -->
+    <div class="flex space-x-4">
+      <button
+        onclick="printResit()"
+        class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600"
+      >
+        Print Resit
+      </button>
+      <button
+        onclick="tutupResit()"
+        class="bg-red-500 text-white px-6 py-2 rounded-lg hover:bg-red-600"
+      >
+        Tutup Resit
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /*************************************************
+   * 1. SETTING - QR KEDAI
+   *************************************************/
+  let storeQrCode = ""; // akan simpan base64 / data URL imej QR kedai
+
+  // Tunjuk/sembunyi Setting
+  function toggleSetting() {
+    const settingSec = document.getElementById("settingSection");
+    const mainSec = document.getElementById("mainSection");
+    if (settingSec.style.display === "none") {
+      settingSec.style.display = "block";
+      mainSec.style.display = "none";
+    } else {
+      settingSec.style.display = "none";
+      mainSec.style.display = "block";
+    }
+  }
+
+  // Sentiasa tunjuk paparan utama
+  function showMain() {
+    document.getElementById("settingSection").style.display = "none";
+    document.getElementById("mainSection").style.display = "block";
+  }
+
+  // Fungsi untuk upload imej QR
+  function uploadQrImage() {
+    let fileInput = document.getElementById("kedaiQrFile");
+    if (fileInput.files.length === 0) {
+      alert("Tiada fail dipilih!");
+      return;
+    }
+    let file = fileInput.files[0];
+    let reader = new FileReader();
+    reader.onload = function(e) {
+      // Simpan data URL ke storeQrCode
+      storeQrCode = e.target.result;
+      // Papar preview
+      let preview = document.getElementById("kedaiQrPreview");
+      preview.src = storeQrCode;
+      preview.classList.remove("hidden");
+      alert("Imej QR kedai dimuat naik!");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /*************************************************
+   * 2. STOK
+   *************************************************/
+  let stokBarang = {};
+
+  function paparkanStok() {
+    const senarai = document.getElementById("senaraiStok");
+    senarai.innerHTML = "";
+    for (let code in stokBarang) {
+      const item = stokBarang[code];
+      senarai.innerHTML += `<li><strong>Kod:</strong> ${code}, <strong>Nama:</strong> ${item.name}, <strong>Harga:</strong> RM${item.price.toFixed(2)}, <strong>Stok:</strong> ${item.quantity}</li>`;
+    }
+  }
+
+  function tambahStokManual() {
+    const code = document.getElementById("stokKode").value.trim();
+    const name = document.getElementById("stokNama").value.trim();
+    const price = parseFloat(document.getElementById("stokHarga").value);
+    const quantity = parseInt(document.getElementById("stokKuantiti").value);
+
+    if (!code || !name || isNaN(price) || isNaN(quantity)) {
+      alert("Sila isi semua maklumat stok dengan betul.");
+      return;
+    }
+
+    if (!stokBarang[code]) {
+      stokBarang[code] = { name, price, quantity };
+    } else {
+      stokBarang[code].name = name;
+      stokBarang[code].price = price;
+      stokBarang[code].quantity += quantity;
+    }
+
+    alert(`Stok ${name} berjaya ditambah/kemaskini.`);
+    paparkanStok();
+    // Kosongkan input
+    document.getElementById("stokKode").value = "";
+    document.getElementById("stokNama").value = "";
+    document.getElementById("stokHarga").value = "";
+    document.getElementById("stokKuantiti").value = "";
+  }
+
+  /* IMBAS STOK */
+  let stokStream = null;
+  let stokScanning = false;
+  let facingModeStok = "environment";
+  const stokVideo = document.getElementById("stokVideo");
+
+  function closeCameraStok() {
+    stokScanning = false;
+    if (stokStream) {
+      stokStream.getTracks().forEach((track) => track.stop());
+    }
+    stokStream = null;
+    stokVideo.classList.add("hidden");
+  }
+
+  async function mulaImbasStok() {
+    if (!("BarcodeDetector" in window)) {
+      alert("Browser anda tidak menyokong BarcodeDetector API.");
+      return;
+    }
+    stokScanning = true;
+    await aksesKameraStok(facingModeStok);
+    stokVideo.classList.remove("hidden");
+    detectStokBarcode();
+  }
+
+  async function aksesKameraStok(mode) {
+    try {
+      if (stokStream) {
+        stokStream.getTracks().forEach((track) => track.stop());
+      }
+      stokStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: mode },
+      });
+      stokVideo.srcObject = stokStream;
+      stokVideo.onloadedmetadata = () => stokVideo.play();
+    } catch (err) {
+      console.error("Permission Error (Stok): ", err);
+      alert("Tidak dapat akses kamera untuk stok. Benarkan di tetapan pelayar.");
+    }
+  }
+
+  async function detectStokBarcode() {
+    if (!stokScanning) return;
+
+    try {
+      const detector = new BarcodeDetector({
+        formats: ["code_128", "ean_13", "ean_8", "qr_code"],
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = stokVideo.videoWidth;
+      canvas.height = stokVideo.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(stokVideo, 0, 0, canvas.width, canvas.height);
+
+      const barcodesDetected = await detector.detect(canvas);
+      if (barcodesDetected.length > 0) {
+        const code = barcodesDetected[0].rawValue;
+        beepSound();
+        stokScanning = false;
+
+        let name = prompt("Kod: " + code + "\nMasukkan nama barang:", "");
+        if (name === null) {
+          alert("Penambahan stok dibatalkan.");
+          closeCameraStok();
+          return;
+        }
+
+        let price = prompt("Masukkan harga barang (RM):", "0");
+        if (price === null) {
+          alert("Penambahan stok dibatalkan.");
+          closeCameraStok();
+          return;
+        }
+
+        let quantity = prompt("Masukkan kuantiti barang:", "1");
+        if (quantity === null) {
+          alert("Penambahan stok dibatalkan.");
+          closeCameraStok();
+          return;
+        }
+
+        if (!price || isNaN(price)) price = "0";
+        if (!quantity || isNaN(quantity)) quantity = "1";
+
+        if (!stokBarang[code]) {
+          stokBarang[code] = {
+            name: name.trim(),
+            price: parseFloat(price),
+            quantity: parseInt(quantity),
+          };
+        } else {
+          stokBarang[code].name = name.trim();
+          stokBarang[code].price = parseFloat(price);
+          stokBarang[code].quantity += parseInt(quantity);
+        }
+        alert(`Stok ${code} berjaya ditambah/kemaskini.`);
+        paparkanStok();
+        closeCameraStok();
+      } else {
+        requestAnimationFrame(detectStokBarcode);
+      }
+    } catch (error) {
+      console.error("Barcode detect error (Stok):", error);
+      requestAnimationFrame(detectStokBarcode);
+    }
+  }
+
+  /*************************************************
+   * 3. PEMBELIAN / TROLI
+   *************************************************/
+  let beliStream = null;
+  let beliScanning = false;
+  let facingModeBeli = "environment";
+  const beliVideo = document.getElementById("beliVideo");
+
+  let troli = {};
+
+  async function mulaImbasBeli() {
+    if (!("BarcodeDetector" in window)) {
+      alert("Browser anda tidak menyokong BarcodeDetector API.");
+      return;
+    }
+    beliScanning = true;
+    await aksesKameraBeli(facingModeBeli);
+    beliVideo.classList.remove("hidden");
+    detectBeliBarcode();
+  }
+
+  async function aksesKameraBeli(mode) {
+    try {
+      if (beliStream) {
+        beliStream.getTracks().forEach((track) => track.stop());
+      }
+      beliStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: mode },
+      });
+      beliVideo.srcObject = beliStream;
+      beliVideo.onloadedmetadata = () => beliVideo.play();
+    } catch (err) {
+      console.error("Permission Error (Beli): ", err);
+      alert("Tidak dapat akses kamera untuk pembelian. Benarkan di tetapan pelayar.");
+    }
+  }
+
+  function tukarKameraBeli() {
+    facingModeBeli = facingModeBeli === "environment" ? "user" : "environment";
+    mulaImbasBeli();
+  }
+
+  async function detectBeliBarcode() {
+    if (!beliScanning) return;
+
+    try {
+      const detector = new BarcodeDetector({
+        formats: ["code_128", "ean_13", "ean_8", "qr_code"],
+      });
+      const canvas = document.createElement("canvas");
+      canvas.width = beliVideo.videoWidth;
+      canvas.height = beliVideo.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(beliVideo, 0, 0, canvas.width, canvas.height);
+
+      const barcodesDetected = await detector.detect(canvas);
+      if (barcodesDetected.length > 0) {
+        const code = barcodesDetected[0].rawValue;
+        beepSound();
+        beliScanning = false;
+
+        if (!stokBarang[code]) {
+          alert(`Kod ${code} tidak ditemui dalam stok.`);
+        } else {
+          if (!troli[code]) {
+            troli[code] = {
+              name: stokBarang[code].name,
+              price: stokBarang[code].price,
+              quantity: 1,
+            };
+          } else {
+            troli[code].quantity += 1;
+          }
+          alert(`Kod ${code} (${stokBarang[code].name}) ditambah ke troli.`);
+          paparkanTroli();
+        }
+
+        setTimeout(() => {
+          beliScanning = true;
+          detectBeliBarcode();
+        }, 2000);
+      } else {
+        requestAnimationFrame(detectBeliBarcode);
+      }
+    } catch (error) {
+      console.error("Barcode detect error (Beli):", error);
+      requestAnimationFrame(detectBeliBarcode);
+    }
+  }
+
+  function paparkanTroli() {
+    const senarai = document.getElementById("senaraiTroli");
+    senarai.innerHTML = "";
+    let total = 0;
+    for (let code in troli) {
+      let item = troli[code];
+      let subTotal = item.price * item.quantity;
+      total += subTotal;
+      senarai.innerHTML += `<li>Kod: ${code}, Nama: ${item.name}, Harga: RM${item.price.toFixed(
+        2
+      )}, Qty: ${item.quantity}, SubTotal: RM${subTotal.toFixed(2)}</li>`;
+    }
+    document.getElementById("jumlahBayar").innerText = total.toFixed(2);
+  }
+
+  /*************************************************
+   * 4. BAYARAN & RESIT
+   *************************************************/
+  let pendingPaymentTotal = 0;
+
+  function bayarSekarang() {
+    const kaedah = document.getElementById("kaedahBayar").value;
+    const totalBayar = parseFloat(document.getElementById("jumlahBayar").innerText);
+    if (totalBayar <= 0) {
+      alert("Troli kosong atau tiada jumlah untuk dibayar.");
+      return;
+    }
+
+    if (kaedah === 'qr') {
+      // Tunjukkan paparan QR
+      if (!storeQrCode) {
+        alert("QR kedai belum diset dalam Setting!");
+        return;
+      }
+      document.getElementById('kedaiQrImg').src = storeQrCode;
+      document.getElementById('qrPaymentContainer').classList.remove('hidden');
+      pendingPaymentTotal = totalBayar;
+    } else {
+      // Bayar tunai
+      processPayment(kaedah, totalBayar);
+    }
+  }
+
+  // Pelanggan sudah imbas QR & bayar, kita sahkan
+  async function confirmQRPayment() {
+    let paid = parseFloat(prompt(`Masukkan jumlah yang dibayar (RM):`, '0'));
+    if (isNaN(paid) || paid <= 0) {
+      alert('Jumlah tidak sah. Sila masukkan nilai yang betul.');
+      return;
+    }
+
+    if (paid < pendingPaymentTotal) {
+      let balance = pendingPaymentTotal - paid;
+      alert(`Bayaran tidak mencukupi. Baki: RM${balance.toFixed(2)}`);
+      return;
+    } else if (paid > pendingPaymentTotal) {
+      let extra = paid - pendingPaymentTotal;
+      alert(`Anda telah membayar RM${extra.toFixed(2)} lebih. Terima kasih!`);
+    }
+
+    // Minta no. rujukan
+    let refNo = prompt("Masukkan nombor rujukan pembayaran:");
+    if (!refNo) {
+      refNo = "";
+    }
+
+    document.getElementById('qrPaymentContainer').classList.add('hidden');
+    processPayment('qr', pendingPaymentTotal, refNo);
+  }
+
+  function processPayment(kaedah, totalBayar, refNo = "") {
+    // Kurangkan stok
+    for (let code in troli) {
+      let itemTroli = troli[code];
+      if (stokBarang[code]) {
+        if (stokBarang[code].quantity < itemTroli.quantity) {
+          alert(`Stok untuk ${code} tidak mencukupi!`);
+          return;
+        } else {
+          stokBarang[code].quantity -= itemTroli.quantity;
+        }
+      }
+    }
+
+    // Papar resit
+    paparResit(kaedah, totalBayar, refNo);
+
+    // Kosongkan troli
+    troli = {};
+    paparkanTroli();
+    // Kemaskini senarai stok
+    paparkanStok();
+  }
+
+  function paparResit(kaedah, totalBayar, refNo = "") {
+    const resitDiv = document.getElementById("resitPembelian");
+    let html = `<p><strong>Resit Pembelian</strong></p>`;
+    html += `<p>Kaedah Bayaran: ${kaedah === "cash" ? "Cash" : "QR Code"}</p>`;
+    if (kaedah === "qr") {
+      html += `<p><strong>No Rujukan:</strong> ${refNo}</p>`;
+    }
+    html += `<ul class="list-disc pl-6">`;
+    for (let code in troli) {
+      let item = troli[code];
+      let subTotal = item.price * item.quantity;
+      html += `<li>${item.name} (Kod: ${code}) - RM${item.price.toFixed(
+        2
+      )} x ${item.quantity} = RM${subTotal.toFixed(2)}</li>`;
+    }
+    html += `</ul>`;
+    html += `<p class="mt-2"><strong>Jumlah: RM${totalBayar.toFixed(2)}</strong></p>`;
+
+    resitDiv.innerHTML = html;
+    document.getElementById("resitContainer").classList.remove("hidden");
+  }
+
+  // Print hanya resit
+  function printResit() {
+    window.print(); 
+  }
+
+  function tutupResit() {
+    document.getElementById("resitContainer").classList.add("hidden");
+  }
+
+  /*************************************************
+   * UTILITI: BEEP
+   *************************************************/
+  function beepSound() {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioCtx.createOscillator();
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+    oscillator.connect(audioCtx.destination);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + 0.2);
+  }
+
+  // Pada mula, paparan Setting disembunyikan, paparan utama ditunjukkan
+  document.getElementById("settingSection").style.display = "none";
+  document.getElementById("mainSection").style.display = "block";
+</script>
+</body>
+</html>
